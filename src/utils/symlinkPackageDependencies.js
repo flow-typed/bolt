@@ -54,37 +54,37 @@ export default async function symlinkPackageDependencies(
       continue;
     }
 
-    if (!versionInProject) {
-      valid = false;
-      logger.error(
-        messages.depMustBeAddedToProject(pkg.config.getName(), depName)
-      );
-      continue;
-    }
+    // if (!versionInProject) {
+    //   valid = false;
+    //   logger.error(
+    //     messages.depMustBeAddedToProject(pkg.config.getName(), depName)
+    //   );
+    //   continue;
+    // }
 
-    if (!versionInPkg) {
-      valid = false;
-      logger.error(
-        messages.couldntSymlinkDependencyNotExists(
-          pkg.config.getName(),
-          depName
-        )
-      );
-      continue;
-    }
+    // if (!versionInPkg) {
+    //   valid = false;
+    //   logger.error(
+    //     messages.couldntSymlinkDependencyNotExists(
+    //       pkg.config.getName(),
+    //       depName
+    //     )
+    //   );
+    //   continue;
+    // }
 
-    if (versionInProject !== versionInPkg) {
-      valid = false;
-      logger.error(
-        messages.depMustMatchProject(
-          pkg.config.getName(),
-          depName,
-          versionInProject,
-          versionInPkg
-        )
-      );
-      continue;
-    }
+    // if (versionInProject !== versionInPkg) {
+    //   valid = false;
+    //   logger.error(
+    //     messages.depMustMatchProject(
+    //       pkg.config.getName(),
+    //       depName,
+    //       versionInProject,
+    //       versionInPkg
+    //     )
+    //   );
+    //   continue;
+    // }
 
     let src = path.join(project.pkg.nodeModules, depName);
     let dest = path.join(pkg.nodeModules, depName);
