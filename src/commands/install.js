@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as logger from '../utils/logger';
 import * as messages from '../utils/messages';
 import validateProject from '../utils/validateProject';
+import addDependenciesToPackage from '../utils/addDependenciesToPackages';
 import symlinkPackageDependencies from '../utils/symlinkPackageDependencies';
 import symlinkPackagesBinaries from '../utils/symlinkPackagesBinariesToProject';
 import * as yarn from '../utils/yarn';
@@ -55,12 +56,13 @@ export async function install(opts: InstallOptions) {
 
   let packagesGraph = await project.getDependencyGraph(packages);
   for (let pkg of packages) {
-    let dependencies = Array.from(pkg.getAllDependencies().keys());
+    let dependencies = Array.from(pkg.getAllDependencies().entries());
     logger.info(`Linking ${pkg.config.json.name}`, {});
-    await symlinkPackageDependencies(
+    // TODO: reconsider this
+    await addDependenciesToPackage(
       project,
       pkg,
-      dependencies,
+      dependencies.map(([key, value]) => ({ name: key, version: value })),
       packages,
       packagesGraph
     );
