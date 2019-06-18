@@ -9,18 +9,24 @@ import * as messages from './messages';
 import { BoltError } from './errors';
 import * as logger from './logger';
 import * as yarn from './yarn';
+import * as flowVersion from './flowVersion';
 import symlinkPackageDependencies from './symlinkPackageDependencies';
 
 export default async function addDependenciesToPackage(
   project: Project,
   pkg: Package,
   dependencies: Array<Dependency>,
+  packages: Array<Package>,
+  packageGraph: {
+    graph: Map<string, { pkg: Package, dependencies: Array<string> }>,
+    paths: Map<Package, Map<string, Package>>,
+    valid: boolean
+  },
   type?: configDependencyType = 'dependencies'
 ) {
-  let packages = await project.getPackages();
   let projectDependencies = project.pkg.getAllDependencies();
   let pkgDependencies = pkg.getAllDependencies();
-  let { graph: depGraph } = await project.getDependencyGraph(packages);
+  let { graph: depGraph } = packageGraph;
 
   let dependencyNames = dependencies.map(dep => dep.name);
   let externalDeps = dependencies.filter(dep => !depGraph.has(dep.name));
@@ -49,16 +55,16 @@ export default async function addDependenciesToPackage(
     let installed = project.pkg.getDependencyVersionRange(dep.name);
     // If we aren't specified a version, use the same one from the project
     let depVersion = dep.version || installed;
-    if (depVersion !== installed) {
-      throw new BoltError(
-        messages.depMustMatchProject(
-          pkg.config.getName(),
-          dep.name,
-          installed,
-          depVersion
-        )
-      );
-    }
+    // if (depVersion !== installed) {
+    //   throw new BoltError(
+    //     messages.depMustMatchProject(
+    //       pkg.config.getName(),
+    //       dep.name,
+    //       installed,
+    //       depVersion
+    //     )
+    //   );
+    // }
     installedVersions[dep.name] = depVersion;
   }
 
@@ -67,22 +73,29 @@ export default async function addDependenciesToPackage(
     let internalVersion = dependencyPkg.config.getVersion();
     // If no version is requested, default to caret at the current version
     let requestedVersion = dep.version || `^${internalVersion}`;
-    if (!semver.satisfies(internalVersion, requestedVersion)) {
-      throw new BoltError(
-        messages.packageMustDependOnCurrentVersion(
-          pkg.config.getName(),
-          dep.name,
-          internalVersion,
-          requestedVersion
-        )
-      );
-    }
+    // if (!semver.satisfies(internalVersion, requestedVersion)) {
+    //   throw new BoltError(
+    //     messages.packageMustDependOnCurrentVersion(
+    //       pkg.config.getName(),
+    //       dep.name,
+    //       internalVersion,
+    //       requestedVersion,
+    //       flowVersion.toSemverString(pkg.config.getFlowVersion())
+    //     )
+    //   );
+    // }
     installedVersions[dep.name] = requestedVersion;
   }
 
-  for (let [depName, depVersion] of Object.entries(installedVersions)) {
-    await pkg.setDependencyVersionRange(depName, type, String(depVersion));
-  }
+  // for (let [depName, depVersion] of Object.entries(installedVersions)) {
+  //   await pkg.setDependencyVersionRange(depName, type, String(depVersion));
+  // }
 
-  await symlinkPackageDependencies(project, pkg, dependencyNames);
+  await symlinkPackageDependencies(
+    project,
+    pkg,
+    dependencyNames,
+    packages,
+    packageGraph
+  );
 }
