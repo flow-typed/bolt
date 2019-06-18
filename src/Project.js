@@ -131,7 +131,8 @@ export default class Project {
                   name,
                   depName,
                   data.pkg.getVersion(),
-                  depVersion
+                  depVersion,
+                  flowVersion.toSemverString(currentFlowVersion)
                 )
               );
             return isValid;
@@ -297,15 +298,15 @@ export default class Project {
 
     let graph = new Map();
 
-    for (let [pkgName, pkgInfo] of dependentsGraph) {
-      graph.set(pkgName, pkgInfo.dependencies);
+    for (let [pkgPrimaryKey, pkgInfo] of dependentsGraph) {
+      graph.set(pkgPrimaryKey, pkgInfo.dependencies);
     }
 
     let { safe, values } = await taskGraphRunner({
       graph,
       force: true,
-      task: async pkgName => {
-        let pkg = this.getPackageByName(packages, pkgName);
+      task: async pkgPrimaryKey => {
+        let pkg = this.getPackageByPrimaryKey(packages, pkgPrimaryKey);
         if (pkg) {
           return task(pkg);
         }
@@ -320,6 +321,10 @@ export default class Project {
 
   getPackageByName(packages: Array<Package>, pkgName: string) {
     return packages.find(pkg => pkg.getName() === pkgName);
+  }
+
+  getPackageByPrimaryKey(packages: Array<Package>, pkgPrimaryKey: string) {
+    return packages.find(pkg => pkg.getPrimaryKey() === pkgPrimaryKey);
   }
 
   filterPackages(packages: Array<Package>, opts: FilterOpts) {
