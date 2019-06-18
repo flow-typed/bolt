@@ -38,10 +38,12 @@ export function packageMustDependOnCurrentVersion(
   name: string,
   depName: string,
   expected: string,
-  actual: string
+  actual: string,
+  expectedFlow?: string
 ): Message {
+  let printName = name + (expectedFlow ? `@${expectedFlow}` : '');
   return `Package ${normalPkg(
-    name
+    printName
   )} must depend on the current version of ${normalPkg(depName)}: ${goodVer(
     expected
   )} vs ${badVer(actual)}`;
