@@ -46,7 +46,7 @@ export async function infoAllow404(pkgName: string) {
 
 export function publish(
   pkgName: string,
-  opts: { cwd?: string, access?: string } = {}
+  opts: { cwd?: string, access?: string, registry?: string } = {}
 ) {
   return npmRequestLimit(async () => {
     logger.info(messages.npmPublish(pkgName));
@@ -55,7 +55,7 @@ export function publish(
       // Due to a super annoying issue in yarn, we have to manually override this env variable
       // See: https://github.com/yarnpkg/yarn/issues/2935#issuecomment-355292633
       const envOverride = {
-        npm_config_registry: 'https://registry.npmjs.org/'
+        npm_config_registry: opts.registry || 'https://registry.npmjs.org/'
       };
       await processes.spawn('npm', ['publish', ...publishFlags], {
         cwd: opts.cwd,
