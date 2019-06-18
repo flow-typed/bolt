@@ -1,5 +1,6 @@
 // @flow
 import path from 'path';
+import * as semver from 'semver';
 import pathIsInside from 'path-is-inside';
 import includes from 'array-includes';
 
@@ -36,12 +37,13 @@ export default async function symlinkPackageDependencies(
 
   let directoriesToCreate = [];
   let symlinksToCreate = [];
+  let packagesToInstall = [];
 
   let valid = true;
 
   /*********************************************************************
    * Calculate all the external dependencies that need to be symlinked *
-  **********************************************************************/
+   **********************************************************************/
 
   directoriesToCreate.push(pkg.nodeModules, pkg.nodeModulesBin);
 
@@ -86,15 +88,26 @@ export default async function symlinkPackageDependencies(
     //   continue;
     // }
 
-    let src = path.join(project.pkg.nodeModules, depName);
-    let dest = path.join(pkg.nodeModules, depName);
+    if (
+      versionInProject &&
+      semver.validRange(versionInProject) &&
+      semver.validRange(versionInPkg) &&
+      semver.intersects(versionInProject, versionInPkg)
+    ) {
+      let src = path.join(project.pkg.nodeModules, depName);
+      let dest = path.join(pkg.nodeModules, depName);
 
-    symlinksToCreate.push({ src, dest, type: 'junction' });
+      symlinksToCreate.push({ src, dest, type: 'junction' });
+    } else {
+      packagesToInstall.push({ name: depName, version: versionInPkg });
+    }
   }
+
+  await yarn.add(pkg, packagesToInstall, 'dependencies');
 
   /*********************************************************************
    * Calculate all the internal dependencies that need to be symlinked *
-  **********************************************************************/
+   **********************************************************************/
 
   for (let dependency of internalDeps) {
     let depPkg = links.get(dependency);
@@ -111,7 +124,7 @@ export default async function symlinkPackageDependencies(
 
   /********************************************************
    * Calculate all the bin files that need to be symlinked *
-  *********************************************************/
+   *********************************************************/
   let projectBinFiles = await fs.readdirSafe(project.pkg.nodeModulesBin);
 
   // TODO: For now, we'll search through each of the bin files in the Project and find which ones are
@@ -159,7 +172,7 @@ export default async function symlinkPackageDependencies(
 
   /*****************************************************************
    * Calculate all the internal bin files that need to be symlinked *
-  ******************************************************************/
+   ******************************************************************/
 
   // TODO: Same as above, we should really be making sure we get all the transitive bins as well
 
@@ -199,7 +212,7 @@ export default async function symlinkPackageDependencies(
 
   /**********************************
    * Create directories and symlinks *
-  ***********************************/
+   ***********************************/
 
   await yarn.runIfExists(pkg, 'preinstall');
 
