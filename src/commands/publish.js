@@ -15,7 +15,8 @@ export function toPublishOptions(
 ): PublishOptions {
   return {
     cwd: options.string(flags.cwd, 'cwd'),
-    access: options.string(flags.access, 'access')
+    access: options.string(flags.access, 'access'),
+    registry: options.string(flags.registry, 'registry')
   };
 }
 
@@ -46,9 +47,9 @@ export async function publish(opts: PublishOptions) {
 
   if (unsuccessful.length > 0) {
     throw new BoltError(
-      `Failed to publish ${unsuccessful.length} ${unsuccessful.length === 1
-        ? 'package'
-        : 'packages'}`
+      `Failed to publish ${unsuccessful.length} ${
+        unsuccessful.length === 1 ? 'package' : 'packages'
+      }`
     );
   }
 }
