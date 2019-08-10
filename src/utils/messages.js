@@ -36,17 +36,26 @@ const importantSeparator = chalk.red(
 
 export function packageMustDependOnCurrentVersion(
   name: string,
+  version: string,
   depName: string,
   expected: string,
   actual: string,
-  expectedFlow?: string
+  expectedFlow?: string,
+  actualFlow?: string
 ): Message {
-  let printName = name + (expectedFlow ? `@${expectedFlow}` : '');
+  let printName =
+    name + `@${version}` + (expectedFlow ? `@${expectedFlow}` : '');
+  let packageVersionCompare = `\n  ${goodVer(expected)} vs ${badVer(actual)}`;
+  let flowVersionCompare =
+    expectedFlow && actualFlow
+      ? `\n  ${goodVer(expectedFlow)} vs ${badVer(actualFlow)}`
+      : '';
   return `Package ${normalPkg(
     printName
-  )} must depend on the current version of ${normalPkg(depName)}: ${goodVer(
-    expected
-  )} vs ${badVer(actual)}`;
+  )} must depend on the current version of ${normalPkg(
+    depName
+  )}: ${packageVersionCompare}${flowVersionCompare}
+  `;
 }
 
 export function depMustBeAddedToProject(
@@ -275,6 +284,16 @@ export function publishingPackage(
   pkgVersion: string
 ): Message {
   return `Publishing ${normalPkg(pkgName)} at ${goodVer(pkgVersion)}`;
+}
+
+export function linkingPackage(
+  pkgName: string,
+  pkgVersion: string,
+  flowVersion: string
+): Message {
+  return `Linking ${normalPkg(pkgName)} at ${goodVer(pkgVersion)}, ${goodVer(
+    flowVersion
+  )}`;
 }
 
 export function noUnpublishedPackagesToPublish(): Message {
