@@ -125,10 +125,11 @@ export default class Project {
           })
           .filter(data => {
             const isValid = semver.satisfies(data.pkg.getVersion(), depVersion);
-            if (!isValid)
+            if (!isValid && !data.isDisjoint)
               errorMessages.push(
                 messages.packageMustDependOnCurrentVersion(
                   name,
+                  version,
                   depName,
                   data.pkg.getVersion(),
                   depVersion,
@@ -142,9 +143,11 @@ export default class Project {
               errorMessages.push(
                 messages.packageMustDependOnCurrentVersion(
                   name,
+                  version,
                   depName,
+                  flowVersion.toSemverString(currentFlowVersion),
                   flowVersion.toDirString(data.pkg.getFlowVersion()),
-                  flowVersion.toDirString(currentFlowVersion)
+                  flowVersion.toSemverString(currentFlowVersion)
                 )
               );
             return !data.isDisjoint;
@@ -162,6 +165,7 @@ export default class Project {
           }
         } else {
           valid = false;
+          // TODO: improve errors
           errorMessages.forEach(msg => logger.error(msg));
           continue;
         }
