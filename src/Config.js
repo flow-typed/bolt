@@ -196,10 +196,15 @@ export default class Config {
     return name;
   }
 
+  getDistTag(): string {
+    let config = this.getConfig();
+    let { tag = 'latest' } = config.publishConfig || {};
+    return tag;
+  }
+
   getPrimaryKey(): string {
     let config = this.getConfig();
     let name = config.name;
-    let { tag = 'latest' } = config.publishConfig || {};
     if (typeof name !== 'string') {
       throw new BoltError(
         `package.json#name must be a string. See "${this.filePath}"`
@@ -219,7 +224,7 @@ export default class Config {
     return version;
   }
 
-  getFlowVersion(): string {
+  getFlowVersion(): flowVersion.FlowVersion {
     let config = this.getConfig();
     return flowVersion.parseDirString(config.flowVersion);
   }
