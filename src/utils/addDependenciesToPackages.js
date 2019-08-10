@@ -26,7 +26,9 @@ export default async function addDependenciesToPackage(
 ) {
   let projectDependencies = project.pkg.getAllDependencies();
   let pkgDependencies = pkg.getAllDependencies();
-  let { graph: depGraph } = packageGraph;
+  let { graph, paths } = packageGraph;
+
+  let depGraph = paths.get(pkg) || new Map();
 
   let dependencyNames = dependencies.map(dep => dep.name);
   let externalDeps = dependencies.filter(dep => !depGraph.has(dep.name));
@@ -69,7 +71,7 @@ export default async function addDependenciesToPackage(
   }
 
   for (let dep of internalDeps) {
-    let dependencyPkg = (depGraph.get(dep.name) || {}).pkg;
+    let dependencyPkg = depGraph.get(dep.name) || {};
     let internalVersion = dependencyPkg.config.getVersion();
     // If no version is requested, default to caret at the current version
     let requestedVersion = dep.version || `^${internalVersion}`;
