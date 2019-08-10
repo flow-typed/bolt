@@ -85,16 +85,18 @@ export default class Project {
     > = new Map();
     let paths: Map<Package, Map<string, Package>> = new Map();
     let queue = [this.pkg];
-    let packagesByName = { [this.pkg.getName()]: [this.pkg] };
+    let packagesByName: Map<string, Array<Package>> = new Map([
+      [this.pkg.getName(), this.pkg]
+    ]);
     let valid = true;
 
     for (let pkg of packages) {
-      if (!packagesByName[pkg.getName()]) {
-        packagesByName[pkg.getName()] = [];
+      if (!packagesByName.has(pkg.getName())) {
+        packagesByName.set(pkg.getName(), []);
       }
 
       queue.push(pkg);
-      packagesByName[pkg.getName()].push(pkg);
+      packagesByName.get(pkg.getName()).push(pkg);
     }
 
     for (let pkg of queue) {
@@ -106,7 +108,7 @@ export default class Project {
       let allDependencies = pkg.getAllDependencies();
 
       for (let [depName, depVersion] of allDependencies) {
-        let match = packagesByName[depName];
+        let match = packagesByName.get(depName);
         if (!match) continue;
         if (match.length === 0) continue;
 
@@ -190,7 +192,7 @@ export default class Project {
       graph.set(primaryKey, { pkg, dependencies });
     }
 
-    return { graph, paths, valid };
+    return { graph, paths, packagesByName, valid };
   }
 
   async getDependentsGraph(packages: Array<Package>) {
