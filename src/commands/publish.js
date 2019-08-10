@@ -16,7 +16,8 @@ export function toPublishOptions(
   return {
     cwd: options.string(flags.cwd, 'cwd'),
     access: options.string(flags.access, 'access'),
-    registry: options.string(flags.registry, 'registry')
+    registry: options.string(flags.registry, 'registry'),
+    filterOpts: options.toFilterOpts(flags)
   };
 }
 
@@ -42,7 +43,7 @@ export async function publish(opts: PublishOptions) {
   }
 
   for (const pkg of unsuccessful) {
-    logger.error(messages.failedToPublishPackage(pkg.name));
+    logger.error(messages.failedToPublishPackage(pkg.name, pkg.newVersion));
   }
 
   if (unsuccessful.length > 0) {
