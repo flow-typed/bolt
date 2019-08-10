@@ -12,13 +12,14 @@ import * as locks from './locks';
 import * as npm from './npm';
 import Project from '../Project';
 import Package from '../Package';
-import type { SpawnOpts } from '../types';
+import type { SpawnOpts, FilterOpts } from '../types';
 
 export type PublishOptions = {|
   cwd?: string,
   access?: string,
   registry?: string,
   spawnOpts?: SpawnOpts,
+  filterOpts: FilterOpts,
   prePublish?: Function
 |};
 
@@ -28,11 +29,11 @@ export type PackageMeta = {|
   published: boolean
 |};
 
-async function getUnpublishedPackages(packages: Package[]) {
+async function getUnpublishedPackages(packages: Package[], registry?: string) {
   let results = await Promise.all(
     packages.map(async pkg => {
       let config = pkg.config;
-      let response = await npm.infoAllow404(config.getName());
+      let response = await npm.infoAllow404(config.getName(), registry);
 
       return {
         name: config.getName(),
@@ -74,7 +75,7 @@ async function setTaggedDependencies(
     await pkg.setDependencyVersionRange(
       dep.getName(),
       'dependencies',
-      dep.config.getConfig().flowVersion
+      `${dep.config.getVersion()} - ${dep.config.getDistTag()}`
     );
   }
 }
@@ -119,13 +120,17 @@ async function setTypingDependencies(pkg: Package) {
 }
 
 export async function publish(
-  opts: PublishOptions = Object.freeze({})
+  opts: PublishOptions = Object.freeze({
+    filterOpts: {}
+  })
 ): Promise<PackageMeta[]> {
   let cwd = opts.cwd || process.cwd();
   let spawnOpts = opts.spawnOpts || {};
+  let filterOpts = opts.filterOpts || {};
   let project = await Project.init(cwd);
   let packages = await project.getPackages();
-  let publicPackages = packages.filter(pkg => !pkg.config.getPrivate());
+  let filteredPackages = project.filterPackages(packages, filterOpts);
+  let publicPackages = filteredPackages.filter(pkg => !pkg.config.getPrivate());
   let publishedPackages = [];
 
   if (cwd !== project.pkg.dir) {
@@ -142,7 +147,10 @@ export async function publish(
   try {
     // TODO: Re-enable once locking issues are sorted out
     // await locks.lock(packages);
-    let unpublishedPackagesInfo = await getUnpublishedPackages(publicPackages);
+    let unpublishedPackagesInfo = await getUnpublishedPackages(
+      publicPackages,
+      opts.registry
+    );
     let unpublishedPackages = publicPackages.filter(pkg => {
       return unpublishedPackagesInfo.some(
         p => pkg.getPrimaryKey() === p.primaryKey
