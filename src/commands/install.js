@@ -11,6 +11,7 @@ import addDependenciesToPackage from '../utils/addDependenciesToPackages';
 import symlinkPackageDependencies from '../utils/symlinkPackageDependencies';
 import symlinkPackagesBinaries from '../utils/symlinkPackagesBinariesToProject';
 import * as yarn from '../utils/yarn';
+import * as flowVersion from '../utils/flowVersion';
 import pathIsInside from 'path-is-inside';
 import { BoltError } from '../utils/errors';
 import { BOLT_VERSION } from '../constants';
@@ -57,7 +58,14 @@ export async function install(opts: InstallOptions) {
   let packagesGraph = await project.getDependencyGraph(packages);
   for (let pkg of packages) {
     let dependencies = Array.from(pkg.getAllDependencies().entries());
-    logger.info(`Linking ${pkg.config.json.name}`, {});
+    logger.info(
+      messages.linkingPackage(
+        pkg.config.json.name,
+        pkg.getVersion(),
+        flowVersion.toSemverString(pkg.getFlowVersion())
+      ),
+      {}
+    );
     // TODO: reconsider this
     await addDependenciesToPackage(
       project,
