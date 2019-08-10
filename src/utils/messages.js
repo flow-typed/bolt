@@ -330,8 +330,11 @@ export function successfullyPublishedPackage(
   return `Successfully published ${pkgName}@${pkgVersion}`;
 }
 
-export function failedToPublishPackage(pkgName: string): Message {
-  return `Failed to publish ${pkgName}`;
+export function failedToPublishPackage(
+  pkgName: string,
+  pkgVersion: string
+): Message {
+  return `Failed to publish ${pkgName}@${pkgVersion}`;
 }
 
 export function couldNotBeNormalized(): Message {
