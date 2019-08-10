@@ -15,7 +15,9 @@ export function toPublishOptions(
 ): PublishOptions {
   return {
     cwd: options.string(flags.cwd, 'cwd'),
-    access: options.string(flags.access, 'access')
+    access: options.string(flags.access, 'access'),
+    registry: options.string(flags.registry, 'registry'),
+    filterOpts: options.toFilterOpts(flags)
   };
 }
 
@@ -41,14 +43,14 @@ export async function publish(opts: PublishOptions) {
   }
 
   for (const pkg of unsuccessful) {
-    logger.error(messages.failedToPublishPackage(pkg.name));
+    logger.error(messages.failedToPublishPackage(pkg.name, pkg.newVersion));
   }
 
   if (unsuccessful.length > 0) {
     throw new BoltError(
-      `Failed to publish ${unsuccessful.length} ${unsuccessful.length === 1
-        ? 'package'
-        : 'packages'}`
+      `Failed to publish ${unsuccessful.length} ${
+        unsuccessful.length === 1 ? 'package' : 'packages'
+      }`
     );
   }
 }

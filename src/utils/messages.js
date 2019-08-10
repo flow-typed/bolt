@@ -36,15 +36,26 @@ const importantSeparator = chalk.red(
 
 export function packageMustDependOnCurrentVersion(
   name: string,
+  version: string,
   depName: string,
   expected: string,
-  actual: string
+  actual: string,
+  expectedFlow?: string,
+  actualFlow?: string
 ): Message {
+  let printName =
+    name + `@${version}` + (expectedFlow ? `@${expectedFlow}` : '');
+  let packageVersionCompare = `\n  ${goodVer(expected)} vs ${badVer(actual)}`;
+  let flowVersionCompare =
+    expectedFlow && actualFlow
+      ? `\n  ${goodVer(expectedFlow)} vs ${badVer(actualFlow)}`
+      : '';
   return `Package ${normalPkg(
-    name
-  )} must depend on the current version of ${normalPkg(depName)}: ${goodVer(
-    expected
-  )} vs ${badVer(actual)}`;
+    printName
+  )} must depend on the current version of ${normalPkg(
+    depName
+  )}: ${packageVersionCompare}${flowVersionCompare}
+  `;
 }
 
 export function depMustBeAddedToProject(
@@ -275,6 +286,16 @@ export function publishingPackage(
   return `Publishing ${normalPkg(pkgName)} at ${goodVer(pkgVersion)}`;
 }
 
+export function linkingPackage(
+  pkgName: string,
+  pkgVersion: string,
+  flowVersion: string
+): Message {
+  return `Linking ${normalPkg(pkgName)} at ${goodVer(pkgVersion)}, ${goodVer(
+    flowVersion
+  )}`;
+}
+
 export function noUnpublishedPackagesToPublish(): Message {
   return 'No unpublished packages to publish';
 }
@@ -309,8 +330,11 @@ export function successfullyPublishedPackage(
   return `Successfully published ${pkgName}@${pkgVersion}`;
 }
 
-export function failedToPublishPackage(pkgName: string): Message {
-  return `Failed to publish ${pkgName}`;
+export function failedToPublishPackage(
+  pkgName: string,
+  pkgVersion: string
+): Message {
+  return `Failed to publish ${pkgName}@${pkgVersion}`;
 }
 
 export function couldNotBeNormalized(): Message {

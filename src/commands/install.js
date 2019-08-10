@@ -7,9 +7,11 @@ import * as path from 'path';
 import * as logger from '../utils/logger';
 import * as messages from '../utils/messages';
 import validateProject from '../utils/validateProject';
+import addDependenciesToPackage from '../utils/addDependenciesToPackages';
 import symlinkPackageDependencies from '../utils/symlinkPackageDependencies';
 import symlinkPackagesBinaries from '../utils/symlinkPackagesBinariesToProject';
 import * as yarn from '../utils/yarn';
+import * as flowVersion from '../utils/flowVersion';
 import pathIsInside from 'path-is-inside';
 import { BoltError } from '../utils/errors';
 import { BOLT_VERSION } from '../constants';
@@ -53,10 +55,25 @@ export async function install(opts: InstallOptions) {
     prefix: false
   });
 
+  let packagesGraph = await project.getDependencyGraph(packages);
   for (let pkg of packages) {
-    let dependencies = Array.from(pkg.getAllDependencies().keys());
-    logger.info(`Linking ${pkg.config.json.name}`, {});
-    await symlinkPackageDependencies(project, pkg, dependencies, packages);
+    let dependencies = Array.from(pkg.getAllDependencies().entries());
+    logger.info(
+      messages.linkingPackage(
+        pkg.config.json.name,
+        pkg.getVersion(),
+        flowVersion.toSemverString(pkg.getFlowVersion())
+      ),
+      {}
+    );
+    // TODO: reconsider this
+    await addDependenciesToPackage(
+      project,
+      pkg,
+      dependencies.map(([key, value]) => ({ name: key, version: value })),
+      packages,
+      packagesGraph
+    );
   }
 
   logger.info(messages.linkingWorkspaceBinaries(), {

@@ -7,7 +7,7 @@ import pLimit from 'p-limit';
 
 const npmRequestLimit = pLimit(40);
 
-export function info(pkgName: string) {
+export function info(pkgName: string, registry?: string) {
   return npmRequestLimit(async () => {
     logger.info(messages.npmInfo(pkgName));
 
@@ -18,7 +18,7 @@ export function info(pkgName: string) {
     // as they will always give a 404, which will tell `publish` to always try to publish.
     // See: https://github.com/yarnpkg/yarn/issues/2935#issuecomment-355292633
     const envOverride = {
-      npm_config_registry: 'https://registry.npmjs.org/'
+      npm_config_registry: registry || 'https://registry.npmjs.org/'
     };
 
     let result = await processes.spawn('npm', ['info', pkgName, '--json'], {
@@ -30,9 +30,9 @@ export function info(pkgName: string) {
   });
 }
 
-export async function infoAllow404(pkgName: string) {
+export async function infoAllow404(pkgName: string, registry?: string) {
   try {
-    let pkgInfo = await info(pkgName);
+    let pkgInfo = await info(pkgName, registry);
     return { published: true, pkgInfo };
   } catch (error) {
     let output = JSON.parse(error.stdout);
@@ -46,7 +46,7 @@ export async function infoAllow404(pkgName: string) {
 
 export function publish(
   pkgName: string,
-  opts: { cwd?: string, access?: string } = {}
+  opts: { cwd?: string, access?: string, registry?: string } = {}
 ) {
   return npmRequestLimit(async () => {
     logger.info(messages.npmPublish(pkgName));
@@ -55,7 +55,7 @@ export function publish(
       // Due to a super annoying issue in yarn, we have to manually override this env variable
       // See: https://github.com/yarnpkg/yarn/issues/2935#issuecomment-355292633
       const envOverride = {
-        npm_config_registry: 'https://registry.npmjs.org/'
+        npm_config_registry: opts.registry || 'https://registry.npmjs.org/'
       };
       await processes.spawn('npm', ['publish', ...publishFlags], {
         cwd: opts.cwd,

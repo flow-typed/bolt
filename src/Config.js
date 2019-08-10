@@ -10,6 +10,7 @@ import * as path from 'path';
 import * as globs from './utils/globs';
 import * as logger from './utils/logger';
 import * as messages from './utils/messages';
+import * as flowVersion from './utils/flowVersion';
 import { BoltError } from './utils/errors';
 
 async function getPackageStack(cwd: string) {
@@ -195,6 +196,23 @@ export default class Config {
     return name;
   }
 
+  getDistTag(): string {
+    let config = this.getConfig();
+    let { tag = 'latest' } = config.publishConfig || {};
+    return tag;
+  }
+
+  getPrimaryKey(): string {
+    let config = this.getConfig();
+    let name = config.name;
+    if (typeof name !== 'string') {
+      throw new BoltError(
+        `package.json#name must be a string. See "${this.filePath}"`
+      );
+    }
+    return this.filePath;
+  }
+
   getVersion(): string {
     let config = this.getConfig();
     let version = config.version;
@@ -204,6 +222,11 @@ export default class Config {
       );
     }
     return version;
+  }
+
+  getFlowVersion(): flowVersion.FlowVersion {
+    let config = this.getConfig();
+    return flowVersion.parseDirString(config.flowVersion);
   }
 
   getPrivate(): boolean | void {

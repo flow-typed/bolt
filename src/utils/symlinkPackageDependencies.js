@@ -1,5 +1,6 @@
 // @flow
 import path from 'path';
+import * as semver from 'semver';
 import pathIsInside from 'path-is-inside';
 import includes from 'array-includes';
 
@@ -15,26 +16,34 @@ export default async function symlinkPackageDependencies(
   project: Project,
   pkg: Package,
   dependencies: Array<string>,
-  packages: Array<Package>
+  packages: Array<Package>,
+  {
+    graph: dependencyGraph,
+    paths: dependencyPaths,
+    valid: dependencyGraphValid
+  }: {
+    graph: Map<string, { pkg: Package, dependencies: Array<string> }>,
+    paths: Map<Package, Map<string, Package>>,
+    valid: boolean
+  }
 ) {
   let projectDeps = project.pkg.getAllDependencies();
   let pkgDependencies = project.pkg.getAllDependencies();
-  let {
-    graph: dependencyGraph,
-    valid: dependencyGraphValid
-  } = await project.getDependencyGraph(packages);
-  let pkgName = pkg.config.getName();
+  let pkgPrimaryKey = pkg.config.getPrimaryKey();
   // get all the dependencies that are internal workspaces in this project
-  let internalDeps = (dependencyGraph.get(pkgName) || {}).dependencies || [];
+  let internalDeps =
+    (dependencyGraph.get(pkgPrimaryKey) || {}).dependencies || [];
+  let links = dependencyPaths.get(pkg) || new Map();
 
   let directoriesToCreate = [];
   let symlinksToCreate = [];
+  let packagesToInstall = [];
 
   let valid = true;
 
   /*********************************************************************
    * Calculate all the external dependencies that need to be symlinked *
-  **********************************************************************/
+   **********************************************************************/
 
   directoriesToCreate.push(pkg.nodeModules, pkg.nodeModulesBin);
 
@@ -43,55 +52,67 @@ export default async function symlinkPackageDependencies(
     let versionInPkg = pkg.getDependencyVersionRange(depName);
 
     // If dependency is internal we can ignore it (we symlink below)
-    if (dependencyGraph.has(depName)) {
+    if (links.has(depName)) {
       continue;
     }
 
-    if (!versionInProject) {
-      valid = false;
-      logger.error(
-        messages.depMustBeAddedToProject(pkg.config.getName(), depName)
-      );
-      continue;
+    // if (!versionInProject) {
+    //   valid = false;
+    //   logger.error(
+    //     messages.depMustBeAddedToProject(pkg.config.getName(), depName)
+    //   );
+    //   continue;
+    // }
+
+    // if (!versionInPkg) {
+    //   valid = false;
+    //   logger.error(
+    //     messages.couldntSymlinkDependencyNotExists(
+    //       pkg.config.getName(),
+    //       depName
+    //     )
+    //   );
+    //   continue;
+    // }
+
+    // if (versionInProject !== versionInPkg) {
+    //   valid = false;
+    //   logger.error(
+    //     messages.depMustMatchProject(
+    //       pkg.config.getName(),
+    //       depName,
+    //       versionInProject,
+    //       versionInPkg
+    //     )
+    //   );
+    //   continue;
+    // }
+
+    if (
+      versionInProject &&
+      semver.validRange(versionInProject) &&
+      semver.validRange(versionInPkg) &&
+      semver.intersects(versionInProject, versionInPkg)
+    ) {
+      let src = path.join(project.pkg.nodeModules, depName);
+      let dest = path.join(pkg.nodeModules, depName);
+
+      symlinksToCreate.push({ src, dest, type: 'junction' });
+    } else {
+      packagesToInstall.push({ name: depName, version: versionInPkg });
     }
-
-    if (!versionInPkg) {
-      valid = false;
-      logger.error(
-        messages.couldntSymlinkDependencyNotExists(
-          pkg.config.getName(),
-          depName
-        )
-      );
-      continue;
-    }
-
-    if (versionInProject !== versionInPkg) {
-      valid = false;
-      logger.error(
-        messages.depMustMatchProject(
-          pkg.config.getName(),
-          depName,
-          versionInProject,
-          versionInPkg
-        )
-      );
-      continue;
-    }
-
-    let src = path.join(project.pkg.nodeModules, depName);
-    let dest = path.join(pkg.nodeModules, depName);
-
-    symlinksToCreate.push({ src, dest, type: 'junction' });
   }
+
+  await yarn.add(pkg, packagesToInstall, 'dependencies');
 
   /*********************************************************************
    * Calculate all the internal dependencies that need to be symlinked *
-  **********************************************************************/
+   **********************************************************************/
 
   for (let dependency of internalDeps) {
-    let depWorkspace = dependencyGraph.get(dependency) || {};
-    let src = depWorkspace.pkg.dir;
+    let depPkg = links.get(dependency);
+    if (!depPkg) continue;
+    let src = depPkg.dir;
     let dest = path.join(pkg.nodeModules, dependency);
 
     symlinksToCreate.push({ src, dest, type: 'junction' });
@@ -103,7 +124,7 @@ export default async function symlinkPackageDependencies(
 
   /********************************************************
    * Calculate all the bin files that need to be symlinked *
-  *********************************************************/
+   *********************************************************/
   let projectBinFiles = await fs.readdirSafe(project.pkg.nodeModulesBin);
 
   // TODO: For now, we'll search through each of the bin files in the Project and find which ones are
@@ -151,16 +172,13 @@ export default async function symlinkPackageDependencies(
 
   /*****************************************************************
    * Calculate all the internal bin files that need to be symlinked *
-  ******************************************************************/
+   ******************************************************************/
 
   // TODO: Same as above, we should really be making sure we get all the transitive bins as well
 
   for (let dependency of internalDeps) {
-    let depWorkspace = dependencyGraph.get(dependency) || {};
-    let depBinFiles =
-      depWorkspace.pkg &&
-      depWorkspace.pkg.config &&
-      depWorkspace.pkg.config.getBin();
+    let depPkg = links.get(dependency) || {};
+    let depBinFiles = depPkg && depPkg.config && depPkg.config.getBin();
 
     if (!depBinFiles) {
       continue;
@@ -174,7 +192,7 @@ export default async function symlinkPackageDependencies(
     if (typeof depBinFiles === 'string') {
       // package may be scoped, name will only be the second part
       let binName = dependency.split('/').pop();
-      let src = path.join(depWorkspace.pkg.dir, depBinFiles);
+      let src = path.join(depPkg.dir, depBinFiles);
       let dest = path.join(pkg.nodeModulesBin, binName);
 
       symlinksToCreate.push({ src, dest, type: 'exec' });
@@ -182,7 +200,7 @@ export default async function symlinkPackageDependencies(
     }
 
     for (let [binName, binPath] of Object.entries(depBinFiles)) {
-      let src = path.join(depWorkspace.pkg.dir, String(binPath));
+      let src = path.join(depPkg.dir, String(binPath));
       let dest = path.join(pkg.nodeModulesBin, binName);
 
       // Just in case the symlink is already added (it might have already existed in the projects bin/)
@@ -194,7 +212,7 @@ export default async function symlinkPackageDependencies(
 
   /**********************************
    * Create directories and symlinks *
-  ***********************************/
+   ***********************************/
 
   await yarn.runIfExists(pkg, 'preinstall');
 

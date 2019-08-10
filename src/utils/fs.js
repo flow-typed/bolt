@@ -14,6 +14,12 @@ export function readFile(filePath: string): Promise<string> {
   return promisify(cb => fs.readFile(filePath, cb));
 }
 
+export function rename(from: string, to: string): Promise<void> {
+  return promisify(cb => fs.rename(from, to, cb));
+}
+
+export const renameSync = fs.renameSync;
+
 export function writeFile(
   filePath: string,
   fileContents: string
