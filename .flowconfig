@@ -1,5 +1,6 @@
 [ignore]
 .*/__fixtures__/.*
+.*/node_modules/.*
 
 [include]
 
